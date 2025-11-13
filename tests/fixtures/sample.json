@@ -1,0 +1,28 @@
+{
+  "server": {
+    "port": 7574,
+    "host": "localhost",
+    "timeout": 30
+  },
+  "database": {
+    "type": "sqlite",
+    "path": "/workspace/brainloop.db",
+    "max_connections": 10
+  },
+  "cerebras": {
+    "api_url": "https://api.cerebras.ai/v1",
+    "model": "zai-glm-4.6",
+    "max_tokens": 8000,
+    "temperature": 0.1
+  },
+  "cache": {
+    "enabled": true,
+    "ttl": 3600,
+    "max_size": "100MB"
+  },
+  "logging": {
+    "level": "info",
+    "output": "stdout",
+    "format": "json"
+  }
+}
