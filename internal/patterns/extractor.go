@@ -133,28 +133,28 @@ func (e *Extractor) findFiles(rootPath, extension string) ([]string, error) {
 // savePatterns saves detected patterns to database
 func (e *Extractor) savePatterns(sourcePath string, patterns map[string]interface{}) error {
 	// Serialize patterns
-	patternsJSON, err := json.Marshal(patterns)
+	_, err := json.Marshal(patterns)
 	if err != nil {
 		return fmt.Errorf("failed to marshal patterns: %w", err)
 	}
 
 	// Determine pattern type
-	patternType := "project"
+	_ = "project"
 	if _, hasGo := patterns["go"]; hasGo {
 		if _, hasSQL := patterns["sql"]; hasSQL {
-			patternType = "mixed"
+			_ = "mixed"
 		} else {
-			patternType = "go"
+			_ = "go"
 		}
 	} else if _, hasSQL := patterns["sql"]; hasSQL {
-		patternType = "sql"
+		_ = "sql"
 	}
 
 	// Calculate confidence score (placeholder)
-	confidenceScore := 0.8
+	_ = 0.8
 
 	// Insert into database
-	patternID := uuid.New().String()
+	_ = uuid.New().String()
 
 	// Use direct SQL since this is a specialized operation
 	_, err = e.lifecycleDB.GetCachedDigest("dummy") // Access underlying DB

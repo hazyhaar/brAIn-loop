@@ -127,7 +127,7 @@ func (h *Hub) extractMarkdownCodeBlocks(lines []string) []map[string]interface{}
 	var currentBlock *map[string]interface{}
 	var currentCode []string
 
-	fenceRegex := regexp.MustCompile(`^```(\w*)`)
+	fenceRegex := regexp.MustCompile("^```(\\w*)")
 
 	for lineNum, line := range lines {
 		if matches := fenceRegex.FindStringSubmatch(line); matches != nil {
@@ -162,7 +162,7 @@ func (h *Hub) extractMarkdownCodeBlocks(lines []string) []map[string]interface{}
 // extractMarkdownLinks extracts all links
 func (h *Hub) extractMarkdownLinks(content string) []map[string]interface{} {
 	var links []map[string]interface{}
-	linkRegex := regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
+	linkRegex := regexp.MustCompile("\\[([^\\]]+)\\]\\(([^)]+)\\)")
 
 	matches := linkRegex.FindAllStringSubmatch(content, -1)
 	for _, match := range matches {
@@ -178,7 +178,7 @@ func (h *Hub) extractMarkdownLinks(content string) []map[string]interface{} {
 // extractMarkdownImages extracts all images
 func (h *Hub) extractMarkdownImages(content string) []map[string]interface{} {
 	var images []map[string]interface{}
-	imageRegex := regexp.MustCompile(`!\[([^\]]*)\]\(([^)]+)\)`)
+	imageRegex := regexp.MustCompile("!\\[([^\\]]*)\\]\\(([^)]+)\\)")
 
 	matches := imageRegex.FindAllStringSubmatch(content, -1)
 	for _, match := range matches {
@@ -196,8 +196,8 @@ func (h *Hub) extractMarkdownLists(lines []string) map[string]interface{} {
 	unorderedCount := 0
 	orderedCount := 0
 
-	unorderedRegex := regexp.MustCompile(`^[\s]*[-*+]\s+`)
-	orderedRegex := regexp.MustCompile(`^[\s]*\d+\.\s+`)
+	unorderedRegex := regexp.MustCompile("^[\\s]*[-*+]\\s+")
+	orderedRegex := regexp.MustCompile("^[\\s]*\\d+\\.\\s+")
 
 	for _, line := range lines {
 		if unorderedRegex.MatchString(line) {

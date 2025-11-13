@@ -2,12 +2,15 @@ package mcp
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
+	"brainloop/internal/database"
 	"brainloop/internal/loop"
 )
 
@@ -511,11 +514,3 @@ func hashString(s string) string {
 	hash := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(hash[:])
 }
-
-// Import database package at the top
-import (
-	"database/sql"
-	"strings"
-
-	"brainloop/internal/database"
-)
