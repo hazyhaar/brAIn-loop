@@ -1,5 +1,10 @@
 # Brainloop - Cerebras-Powered MCP Server
 
+[![CI](https://github.com/YOUR-ORG/brainloop/workflows/CI/badge.svg)](https://github.com/YOUR-ORG/brainloop/actions)
+[![codecov](https://codecov.io/gh/YOUR-ORG/brainloop/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR-ORG/brainloop)
+[![Go Report Card](https://goreportcard.com/badge/github.com/YOUR-ORG/brainloop)](https://goreportcard.com/report/github.com/YOUR-ORG/brainloop)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Brainloop est un MCP server Go HOROS v2-compliant qui fournit génération de code ultra-rapide via Cerebras (1000+ tokens/sec) et lecture intelligente avec génération automatique de digests.
 
 **Caractéristiques principales** :

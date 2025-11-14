@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build binaries
+        run: |
+          # Linux AMD64
+          GOOS=linux GOARCH=amd64 go build -o brainloop-linux-amd64 -ldflags="-X 'main.Version=${{ steps.version.outputs.version }}'" main.go
+
+          # Linux ARM64
+          GOOS=linux GOARCH=arm64 go build -o brainloop-linux-arm64 -ldflags="-X 'main.Version=${{ steps.version.outputs.version }}'" main.go
+
+          # macOS AMD64
+          GOOS=darwin GOARCH=amd64 go build -o brainloop-darwin-amd64 -ldflags="-X 'main.Version=${{ steps.version.outputs.version }}'" main.go
+
+          # macOS ARM64
+          GOOS=darwin GOARCH=arm64 go build -o brainloop-darwin-arm64 -ldflags="-X 'main.Version=${{ steps.version.outputs.version }}'" main.go
+
+      - name: Create checksums
+        run: |
+          sha256sum brainloop-* > checksums.txt
+          cat checksums.txt
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "## Changes" > CHANGELOG.md
+          git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- %s (%h)" >> CHANGELOG.md
+          cat CHANGELOG.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: CHANGELOG.md
+          files: |
+            brainloop-linux-amd64
+            brainloop-linux-arm64
+            brainloop-darwin-amd64
+            brainloop-darwin-arm64
+            checksums.txt
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
