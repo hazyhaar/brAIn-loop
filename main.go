@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"strings"
@@ -68,6 +70,18 @@ func main() {
 	// Signal handling
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+
+	// Start pprof server (localhost only, for debugging)
+	go func() {
+		pprofAddr := "localhost:6060"
+		log.Printf("🔍 pprof server listening on %s", pprofAddr)
+		log.Printf("   CPU:    http://%s/debug/pprof/profile?seconds=30", pprofAddr)
+		log.Printf("   Memory: http://%s/debug/pprof/heap", pprofAddr)
+		log.Printf("   Goroutines: http://%s/debug/pprof/goroutine", pprofAddr)
+		if err := http.ListenAndServe(pprofAddr, nil); err != nil {
+			log.Printf("pprof server error: %v", err)
+		}
+	}()
 
 	// Start MCP server (stdio)
 	go func() {

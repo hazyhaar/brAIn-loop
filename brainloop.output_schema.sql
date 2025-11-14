@@ -38,6 +38,27 @@ CREATE TABLE IF NOT EXISTS reader_digests (
     created_at INTEGER NOT NULL
 );
 
+-- Latency histogram pour percentiles (p50, p95, p99)
+CREATE TABLE IF NOT EXISTS latency_histogram (
+    operation TEXT NOT NULL,
+    bucket_ms INTEGER NOT NULL,     -- 10, 50, 100, 500, 1000, 5000, 10000
+    count INTEGER DEFAULT 0,
+    timestamp INTEGER NOT NULL,     -- Window timestamp (1-minute buckets)
+    PRIMARY KEY (operation, bucket_ms, timestamp)
+);
+
+-- Health checks détaillés
+CREATE TABLE IF NOT EXISTS health_checks (
+    check_name TEXT NOT NULL,
+    status TEXT NOT NULL,           -- 'healthy' | 'degraded' | 'unhealthy'
+    last_check INTEGER NOT NULL,
+    check_count INTEGER DEFAULT 0,
+    error_count INTEGER DEFAULT 0,
+    details TEXT,
+    PRIMARY KEY (check_name)
+);
+
 -- Index
 CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
 CREATE INDEX IF NOT EXISTS idx_reader_digests_type ON reader_digests(source_type);
+CREATE INDEX IF NOT EXISTS idx_latency_histogram_op ON latency_histogram(operation, timestamp DESC);

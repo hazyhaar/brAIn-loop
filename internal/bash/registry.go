@@ -351,6 +351,71 @@ func (r *Registry) UpdatePolicy(hash string, updates map[string]interface{}) err
 	return nil
 }
 
+// SetPolicy sets the policy for a command
+func (r *Registry) SetPolicy(hash, policy, reason string, isOverride bool) error {
+	now := time.Now().Unix()
+
+	if isOverride {
+		_, err := r.db.Exec(`
+			UPDATE commands_registry
+			SET user_override = ?, policy_reason = ?, policy_last_updated = ?, updated_at = ?
+			WHERE command_hash = ?
+		`, policy, reason, now, now, hash)
+		return err
+	}
+
+	_, err := r.db.Exec(`
+		UPDATE commands_registry
+		SET current_policy = ?, policy_reason = ?, policy_last_updated = ?, updated_at = ?
+		WHERE command_hash = ?
+	`, policy, reason, now, now, hash)
+	return err
+}
+
+// PromoteToAutoApprove promotes a command to auto_approve policy
+func (r *Registry) PromoteToAutoApprove(hash string) error {
+	return r.PromotePolicy(hash, "auto_approve", "auto-promoted after successful executions")
+}
+
+// CheckAutoEvolution checks if a command qualifies for auto-promotion
+// Returns true if promoted, false otherwise
+func (r *Registry) CheckAutoEvolution(hash string) (bool, error) {
+	stats, err := r.GetCommandStats(hash)
+	if err != nil {
+		return false, err
+	}
+
+	// Criteria for auto-promotion:
+	// - At least 20 executions
+	// - Success rate >= 95%
+	// - Not already auto_approve
+	if stats.ExecutionCount < 20 {
+		return false, nil
+	}
+
+	successRate := float64(stats.SuccessCount) / float64(stats.ExecutionCount)
+	if successRate < 0.95 {
+		return false, nil
+	}
+
+	currentPolicy, err := r.GetPolicy(hash)
+	if err != nil {
+		return false, err
+	}
+
+	if currentPolicy == "auto_approve" {
+		return false, nil // Already promoted
+	}
+
+	// Promote
+	err = r.PromoteToAutoApprove(hash)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func (r *Registry) Close() error {
 	return r.db.Close()
 }
