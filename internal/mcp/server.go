@@ -25,6 +25,7 @@ type Server struct {
 	loopManager     *loop.Manager
 	readersHub      *readers.Hub
 	patternExtractor *patterns.Extractor
+	bashHandler     *BashHandler
 	ctx             context.Context
 	cancel          context.CancelFunc
 }
@@ -50,6 +51,12 @@ func NewServer(lifecycleDB, outputDB, metadataDB *sql.DB) (*Server, error) {
 	// Initialize pattern extractor
 	patternExtractor := patterns.NewExtractor(lifecycleDB)
 
+	// Initialize bash handler
+	bashHandler, err := NewBashHandler("command_security.db")
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize bash handler: %w", err)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Server{
@@ -60,6 +67,7 @@ func NewServer(lifecycleDB, outputDB, metadataDB *sql.DB) (*Server, error) {
 		loopManager:      loopManager,
 		readersHub:       readersHub,
 		patternExtractor: patternExtractor,
+		bashHandler:      bashHandler,
 		ctx:              ctx,
 		cancel:           cancel,
 	}, nil

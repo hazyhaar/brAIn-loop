@@ -108,6 +108,15 @@ CREATE TABLE IF NOT EXISTS detected_patterns (
     detected_at INTEGER NOT NULL
 );
 
+-- Référence légère vers command_security.db
+-- Permet ATTACH et jointures sans dupliquer données
+CREATE TABLE IF NOT EXISTS command_security_refs (
+    command_hash TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_command_security_refs_created ON command_security_refs(created_at DESC);
+
 -- Index pour performance
 CREATE INDEX IF NOT EXISTS idx_session_blocks_session ON session_blocks(session_id);
 CREATE INDEX IF NOT EXISTS idx_reader_cache_hash ON reader_cache(hash);

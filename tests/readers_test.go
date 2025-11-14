@@ -1,8 +1,11 @@
 package tests
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
+	"time"
 )
 
 // TestReadMarkdownFixture tests reading the sample markdown file
@@ -116,7 +119,7 @@ func TestReaderCacheHash(t *testing.T) {
 	}
 
 	// Simulate hash calculation (path + mtime)
-	hashInput := filePath + ":" + string(info.ModTime().Unix())
+	hashInput := filePath + ":" + fmt.Sprintf("%d", info.ModTime().Unix())
 
 	if hashInput == "" {
 		t.Error("Hash input should not be empty")
@@ -203,9 +206,3 @@ func findSubstring(s, substr string) bool {
 	}
 	return false
 }
-
-// Import for JSON test
-import (
-	"encoding/json"
-	"time"
-)

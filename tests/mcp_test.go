@@ -1,12 +1,8 @@
 package tests
 
 import (
-	"bytes"
 	"encoding/json"
-	"strings"
 	"testing"
-
-	"brainloop/internal/mcp"
 )
 
 // TestMCPInitialize tests the MCP initialize handshake

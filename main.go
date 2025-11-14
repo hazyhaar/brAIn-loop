@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -28,6 +29,18 @@ type Worker struct {
 }
 
 func main() {
+	// Validate working directory - HOROS pattern compliance
+	if err := validateWorkingDirectory(); err != nil {
+		log.Fatalf("Working directory validation failed: %v", err)
+	}
+
+	// Check for single instance
+	lockFile := "brainloop.lock"
+	if err := checkSingleInstance(lockFile); err != nil {
+		log.Fatalf("Single instance check failed: %v", err)
+	}
+	defer os.Remove(lockFile)
+
 	// Initialize worker
 	w := &Worker{
 		workerID: fmt.Sprintf("brainloop-%d", time.Now().Unix()),
@@ -128,8 +141,15 @@ func (w *Worker) sendHeartbeat(status string) {
 		cacheHitRate = float64(cacheHits) / float64(cacheTotal)
 	}
 
+	// Cleanup old workers (zombies) - remove workers inactive for > 2 minutes
+	cutoffTime := time.Now().Unix() - 120
+	_, err := w.outputDB.Exec("DELETE FROM heartbeat WHERE timestamp < ? AND worker_id != ?", cutoffTime, w.workerID)
+	if err != nil {
+		log.Printf("Failed to cleanup old heartbeats: %v", err)
+	}
+
 	// Insert heartbeat
-	_, err := w.outputDB.Exec(`
+	_, err = w.outputDB.Exec(`
 		INSERT OR REPLACE INTO heartbeat
 		(worker_id, timestamp, status, sessions_active, sessions_completed, cache_hit_rate)
 		VALUES (?, ?, ?, ?, ?, ?)
@@ -227,4 +247,80 @@ func recordMetric(db *sql.DB, metricName string, metricValue float64) {
 	if err != nil {
 		log.Printf("Failed to record metric: %v", err)
 	}
+}
+
+// checkSingleInstance ensures only one brainloop instance runs
+func checkSingleInstance(lockFile string) error {
+	// Try to create lock file
+	file, err := os.OpenFile(lockFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	if err != nil {
+		if os.IsExist(err) {
+			// Lock file exists, check if process is still running
+			if content, readErr := os.ReadFile(lockFile); readErr == nil {
+				var pid int
+				if _, scanErr := fmt.Sscanf(string(content), "%d", &pid); scanErr == nil {
+					// Check if PID exists
+					if processExists(pid) {
+						return fmt.Errorf("brainloop is already running with PID %d", pid)
+					}
+					// Stale lock file, remove it
+					os.Remove(lockFile)
+				}
+			}
+			// Retry after removing stale lock
+			file, err = os.OpenFile(lockFile, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+	defer file.Close()
+
+	// Write current PID to lock file
+	pid := os.Getpid()
+	_, err = file.WriteString(fmt.Sprintf("%d\n", pid))
+	return err
+}
+
+// processExists checks if a process with given PID exists
+func processExists(pid int) bool {
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	// Send signal 0 to check if process exists
+	err = process.Signal(syscall.Signal(0))
+	return err == nil
+}
+
+// validateWorkingDirectory ensures we're running from the correct project directory
+func validateWorkingDirectory() error {
+	// Check for required database files in current directory
+	requiredFiles := []string{
+		"brainloop.input_schema.sql",
+		"brainloop.lifecycle_schema.sql",
+		"brainloop.output_schema.sql",
+		"brainloop.metadata_schema.sql",
+	}
+
+	for _, file := range requiredFiles {
+		if _, err := os.Stat(file); os.IsNotExist(err) {
+			return fmt.Errorf("required schema file %s not found in current directory. Brainloop must run from its project directory", file)
+		}
+	}
+
+	// Verify we're in a brainloop project directory
+	pwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	if !strings.Contains(pwd, "brainloop") {
+		return fmt.Errorf("brainloop must run from its project directory, not from: %s", pwd)
+	}
+
+	log.Printf("Running from validated directory: %s", pwd)
+	return nil
 }

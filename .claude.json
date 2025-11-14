@@ -1,0 +1,194 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/gh/anthropics/claude-code@main/schema/claude-config.schema.json",
+  "name": "brainloop",
+  "version": "1.0.0",
+  "description": "Worker HOROS autonome avec boucle LLM continue Cerebras et exécution bash sécurisée",
+
+  "allowedCommands": [
+    "mage build",
+    "mage test",
+    "mage lint",
+    "mage clean",
+    "mage dev",
+    "go build -o brainloop main.go",
+    "go test ./...",
+    "go mod tidy",
+    "golangci-lint run",
+    "./brainloop --init-only",
+    "./scripts/init_command_security.sh",
+    "sqlite3 *.db",
+    "ls -lh *.db"
+  ],
+
+  "patterns": {
+    "databases": {
+      "description": "Pattern 5-BDD HOROS (4 standard + command_security.db)",
+      "files": [
+        "brainloop.input.db",
+        "brainloop.lifecycle.db",
+        "brainloop.output.db",
+        "brainloop.metadata.db",
+        "command_security.db"
+      ],
+      "schemas": [
+        "brainloop.input_schema.sql",
+        "brainloop.lifecycle_schema.sql",
+        "brainloop.output_schema.sql",
+        "brainloop.metadata_schema.sql",
+        "command_security_schema.sql"
+      ]
+    },
+
+    "bash_security": {
+      "description": "Système exécution bash sécurisée avec permissions évolutives",
+      "components": [
+        "internal/bash/registry.go - Gestion registry commandes",
+        "internal/bash/executor.go - Exécution sandboxée",
+        "internal/bash/policy.go - Évolution automatique policies",
+        "internal/bash/validator.go - Validation syntaxe",
+        "internal/bash/security.go - Patterns dangereux"
+      ],
+      "database": "command_security.db",
+      "policies": ["auto_approve", "ask", "ask_warning"],
+      "auto_evolution": "20+ exec, 95%+ success, risk < 0.7 → auto_approve"
+    },
+
+    "mcp": {
+      "description": "Serveur MCP exposant 12 actions via progressive disclosure",
+      "protocol": "JSON-RPC 2.0 stdio",
+      "tool_name": "brainloop",
+      "actions": [
+        "generate_file - Génération code Cerebras → filesystem",
+        "generate_sql - Génération SQL Cerebras → SQLite",
+        "explore - Exploration créative patterns",
+        "loop - Boucle LLM orchestrée",
+        "execute_bash - Exécution bash sécurisée",
+        "read_code - Digest architectural (structure, patterns) via LLM",
+        "audit_code - Analyse critique (bugs, sécurité, perf) via LLM (NOUVEAU)",
+        "read_sqlite - Lecture bases avec cache",
+        "read_markdown - Lecture Markdown avec cache",
+        "read_config - Lecture fichiers config",
+        "list_actions - Liste actions disponibles",
+        "get_schema - Schéma action spécifique",
+        "get_stats - Statistiques usage"
+      ],
+      "action_usage_guide": {
+        "read_code": "Comprendre QUOI/COMMENT (architecture, structure)",
+        "audit_code": "Trouver PROBLÈMES/RISQUES (bugs, vulnérabilités)",
+        "read_vs_audit": "read_code pour comprendre, audit_code pour corriger"
+      },
+      "important_notes": [
+        "TOUJOURS utiliser audit_code pour analyser du code existant",
+        "JAMAIS utiliser generate_file sur fichier existant pour audit",
+        "generate_file ÉCRASE le fichier output_path",
+        "audit_code RETOURNE l'audit sans modifier aucun fichier"
+      ]
+    },
+
+    "cerebras": {
+      "description": "Client Cerebras LLM pour génération continue",
+      "model": "llama-3.3-70b",
+      "api_endpoint": "https://api.cerebras.ai/v1/chat/completions",
+      "features": [
+        "Streaming responses",
+        "Context window 128K tokens",
+        "Vitesse 2000+ tokens/s",
+        "Temperature 0.1 (précision) ou 0.6 (créativité)"
+      ]
+    }
+  },
+
+  "architecture": {
+    "type": "worker",
+    "pattern": "5-BDD",
+    "lifecycle": {
+      "startup": "Signal handling SIGTERM/SIGINT",
+      "heartbeat": "15 secondes → output.db",
+      "shutdown": "Graceful < 60s avec WAL checkpoint",
+      "autonomy": "Aucun ATTACH meta databases au runtime"
+    },
+    "observability": {
+      "heartbeat_interval": "15s",
+      "death_threshold": "30s sans heartbeat",
+      "metrics": "output.db (Cerebras tokens, latence, cache)",
+      "events": "metadata.db (startup, shutdown, erreurs)",
+      "audit": "command_security.db (toutes commandes bash)"
+    }
+  },
+
+  "security": {
+    "bash_execution": {
+      "timeout": "120s max",
+      "max_output": "10 KB",
+      "max_command_length": "4096 chars",
+      "working_dir": "/workspace",
+      "allowed_env": ["PATH", "HOME", "USER", "LANG", "TERM"],
+      "blocked_env_patterns": ["AWS_*", "SSH_*", "TOKEN*", "SECRET*", "PASSWORD*"],
+      "forbidden_patterns": [
+        "rm -rf /",
+        "chmod 777",
+        "mkfs.*",
+        "dd if=/dev/",
+        "fork bombs",
+        "wget/curl | sh",
+        "sudo elevation"
+      ]
+    },
+    "data_isolation": {
+      "command_security.db": "Isolation responsabilité sécurité bash",
+      "processed_log": "Idempotence via SHA256 hash",
+      "user_override": "Prioritaire sur auto-évolution policies"
+    }
+  },
+
+  "build": {
+    "binary": "brainloop",
+    "size": "~15 MB",
+    "commands": {
+      "build": "mage build",
+      "test": "mage test",
+      "lint": "mage lint",
+      "clean": "mage clean"
+    },
+    "dependencies": {
+      "required": [
+        "modernc.org/sqlite v1.28.0",
+        "Go 1.21+"
+      ],
+      "optional": [
+        "golangci-lint (linting)",
+        "mage (build automation)"
+      ],
+      "forbidden": [
+        "mattn/go-sqlite3 (use modernc.org/sqlite)"
+      ]
+    }
+  },
+
+  "horos_compliance": {
+    "declaration": "Enregistré dans /workspace/HOROS.db",
+    "15_dimensions": "Documentées complètement",
+    "sha256_identity": "Hash commandes bash",
+    "processed_log": "Table présente lifecycle.db",
+    "heartbeat": "15s dans output.db",
+    "graceful_shutdown": "< 60s avec WAL checkpoint",
+    "no_meta_attach": "Aucun ATTACH meta au runtime",
+    "sqlite_only": "Aucun HTTP/RPC entre workers"
+  },
+
+  "documentation": {
+    "main": "CLAUDE.md",
+    "bash_execution": "BASH_EXECUTION.md",
+    "horos_rules": "/workspace/docs/architecture/horos-rules.md",
+    "worker_lifecycle": "/workspace/docs/development/worker-lifecycle-pattern.md",
+    "sql_rules": "/workspace/docs/guides/sql-rules.md"
+  },
+
+  "troubleshooting": {
+    "init_databases": "./brainloop --init-only",
+    "init_security": "./scripts/init_command_security.sh",
+    "check_heartbeat": "sqlite3 brainloop.output.db 'SELECT * FROM heartbeat ORDER BY timestamp DESC LIMIT 1;'",
+    "view_policies": "sqlite3 command_security.db 'SELECT command_text, current_policy, execution_count FROM commands_registry;'",
+    "force_override": "UPDATE commands_registry SET user_override='always_allow' WHERE command_hash='<hash>';"
+  }
+}

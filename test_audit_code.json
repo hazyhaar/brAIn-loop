@@ -1,0 +1,15 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "brainloop",
+    "arguments": {
+      "action": "audit_code",
+      "params": {
+        "file_path": "/workspace/projets/brainloop/main.go",
+        "audit_prompt": "Analyse complète : sécurité, performance, conformité HOROS (graceful shutdown, heartbeat, modernc.org/sqlite). Identifie les points faibles et propose améliorations."
+      }
+    }
+  }
+}

@@ -39,6 +39,10 @@ func (s *Server) dispatchAction(action string, params map[string]interface{}) (i
 		return s.handleGetSchema(params)
 	case "get_stats":
 		return s.handleGetStats(params)
+	case "execute_bash":
+		return s.bashHandler.HandleExecuteBash(params)
+	case "audit_code":
+		return s.handleAuditCode(params)
 	default:
 		return nil, fmt.Errorf("unknown action: %s", action)
 	}
@@ -406,7 +410,7 @@ func (s *Server) handleListActions(params map[string]interface{}) (interface{}, 
 		},
 		{
 			"name":        "read_code",
-			"description": "Read and analyze source code file",
+			"description": "Generate architectural digest of code file (structure, patterns, NOT bug analysis)",
 			"parameters":  []string{"file_path"},
 		},
 		{
@@ -428,6 +432,16 @@ func (s *Server) handleListActions(params map[string]interface{}) (interface{}, 
 			"name":        "get_stats",
 			"description": "Get usage statistics (Cerebras tokens, cache hit rate, etc.)",
 			"parameters":  []string{},
+		},
+		{
+			"name":        "execute_bash",
+			"description": "Execute bash command with security policies and duplicate detection",
+			"parameters":  []string{"command", "force_execute (optional)"},
+		},
+		{
+			"name":        "audit_code",
+			"description": "Analyze code file and return audit report (does NOT modify file)",
+			"parameters":  []string{"file_path", "audit_prompt (optional)"},
 		},
 	}
 
@@ -467,6 +481,18 @@ func (s *Server) handleGetSchema(params map[string]interface{}) (interface{}, er
 				"description": "Project patterns for context injection",
 			},
 		},
+		"audit_code": map[string]interface{}{
+			"file_path": map[string]string{
+				"type":        "string",
+				"required":    "true",
+				"description": "Path to code file to audit",
+			},
+			"audit_prompt": map[string]string{
+				"type":        "string",
+				"required":    "false",
+				"description": "Custom audit instructions (default: comprehensive code analysis)",
+			},
+		},
 		// Add other schemas as needed
 	}
 
@@ -498,6 +524,56 @@ func (s *Server) handleGetStats(params map[string]interface{}) (interface{}, err
 		"period_hours": 1,
 		"metrics":      metrics,
 		"timestamp":    time.Now().Unix(),
+	}, nil
+}
+
+// handleAuditCode analyzes code file and returns audit (does NOT write to file)
+func (s *Server) handleAuditCode(params map[string]interface{}) (interface{}, error) {
+	// Extract parameters
+	filePath, ok := params["file_path"].(string)
+	if !ok {
+		return nil, fmt.Errorf("missing file_path parameter")
+	}
+
+	auditPrompt, ok := params["audit_prompt"].(string)
+	if !ok {
+		// Default audit prompt
+		auditPrompt = "Analyze this code for: bugs, security issues, performance problems, code quality, best practices violations, and potential improvements. Provide detailed feedback."
+	}
+
+	// Read file
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %w", filePath, err)
+	}
+
+	// Build complete prompt with file content
+	completePrompt := fmt.Sprintf("%s\n\nFile: %s\n\n```\n%s\n```\n\nProvide your audit as structured markdown.",
+		auditPrompt, filePath, string(content))
+
+	// Generate audit using Cerebras (temperature 0.3 for consistent analysis)
+	result, err := s.cerebrasClient.GenerateCodeWithTemperature(completePrompt, "markdown", nil, 0.3)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate audit: %w", err)
+	}
+
+	// Calculate hash for idempotence tracking
+	hash := hashString(filePath + auditPrompt + result.Content)
+	lifecycleDB := database.NewLifecycleDB(s.lifecycleDB)
+
+	resultJSON, _ := json.Marshal(map[string]interface{}{
+		"file_path": filePath,
+		"tokens":    result.PromptTokens + result.CompletionTokens,
+	})
+	lifecycleDB.MarkProcessed(hash, "audit_code", string(resultJSON))
+
+	// Return audit as text (NO FILE WRITE)
+	return map[string]interface{}{
+		"success":   true,
+		"file_path": filePath,
+		"audit":     result.Content,
+		"tokens":    result.PromptTokens + result.CompletionTokens,
+		"message":   fmt.Sprintf("Code audit completed for %s (no files modified)", filePath),
 	}, nil
 }
 
