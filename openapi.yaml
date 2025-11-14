@@ -1,0 +1,706 @@
+openapi: 3.0.3
+
+info:
+  title: Brainloop MCP Server API
+  description: |
+    Model Context Protocol (MCP) server for code generation and intelligent reading.
+
+    Brainloop provides:
+    - **Code Generation**: Ultra-fast code generation via Cerebras (1000+ tokens/sec)
+    - **Intelligent Reading**: Automatic digest generation (SQLite, Markdown, code)
+    - **Pattern Extraction**: Contextual pattern extraction for Go/SQL
+    - **Bash Execution**: Secure bash execution with evolving permissions
+    - **Audit Workflow**: Propose → Audit → Refine → Commit cycle
+
+    **Communication**: JSON-RPC 2.0 over stdin/stdout
+  version: 1.0.0
+  contact:
+    name: Brainloop Support
+    url: https://github.com/YOUR-ORG/brainloop
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: stdio://
+    description: JSON-RPC 2.0 over stdin/stdout
+
+tags:
+  - name: Generation
+    description: Code generation operations
+  - name: Reading
+    description: Intelligent file reading operations
+  - name: Execution
+    description: Bash command execution
+  - name: Workflow
+    description: Audit workflow operations
+  - name: Metadata
+    description: Server metadata and statistics
+
+paths:
+  /generate_file:
+    post:
+      summary: Generate code file
+      description: |
+        Generates a complete code file using Cerebras LLM with pattern injection.
+        Supports Go, Python, SQL, and generic code.
+      tags:
+        - Generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateFileRequest'
+            examples:
+              go-worker:
+                summary: Generate Go worker
+                value:
+                  action: generate_file
+                  params:
+                    verified_prompt: "Create a HOROS worker with 4-BDD pattern"
+                    output_path: "/workspace/worker-new/main.go"
+                    code_type: "go"
+                    patterns:
+                      naming_convention: "camelCase"
+                      top_imports:
+                        - "modernc.org/sqlite"
+                        - "github.com/google/uuid"
+      responses:
+        '200':
+          description: File generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateFileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /generate_sql:
+    post:
+      summary: Generate SQL schema
+      description: |
+        Generates SQL schema or queries using Cerebras LLM.
+        Automatically injects SQL patterns from existing schemas.
+      tags:
+        - Generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateSQLRequest'
+      responses:
+        '200':
+          description: SQL generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateSQLResponse'
+
+  /explore:
+    post:
+      summary: Creative exploration
+      description: |
+        Open-ended creative generation without output file.
+        Returns generated content as JSON response.
+      tags:
+        - Generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExploreRequest'
+            examples:
+              struct-validation:
+                summary: Create Go struct with validation
+                value:
+                  action: explore
+                  params:
+                    verified_prompt: "Create a simple Go struct for user with name and email validation"
+      responses:
+        '200':
+          description: Exploration completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExploreResponse'
+
+  /read_sqlite:
+    post:
+      summary: Read SQLite database
+      description: |
+        Reads SQLite database and generates intelligent digest with:
+        - Database summary
+        - Schema DDL
+        - Table metadata
+        - Recommendations
+      tags:
+        - Reading
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadSQLiteRequest'
+            examples:
+              read-db:
+                summary: Read HOROS database
+                value:
+                  action: read_sqlite
+                  params:
+                    db_path: "/workspace/HOROS.db"
+      responses:
+        '200':
+          description: Database digest generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadSQLiteResponse'
+
+  /read_markdown:
+    post:
+      summary: Read Markdown document
+      description: |
+        Reads Markdown file and generates structured digest with:
+        - Document summary
+        - Section structure
+        - Code blocks
+        - Key concepts
+      tags:
+        - Reading
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadMarkdownRequest'
+      responses:
+        '200':
+          description: Markdown digest generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadMarkdownResponse'
+
+  /read_code:
+    post:
+      summary: Read code file
+      description: |
+        Reads Go/Python/SQL code and generates digest with:
+        - Code summary
+        - Functions/types
+        - Dependencies
+        - Complexity analysis
+      tags:
+        - Reading
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadCodeRequest'
+      responses:
+        '200':
+          description: Code digest generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadCodeResponse'
+
+  /read_config:
+    post:
+      summary: Read configuration file
+      description: |
+        Reads JSON/YAML/TOML config and generates digest.
+      tags:
+        - Reading
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadConfigRequest'
+      responses:
+        '200':
+          description: Config digest generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadConfigResponse'
+
+  /execute_bash:
+    post:
+      summary: Execute bash command
+      description: |
+        Executes bash command with security policies and permissions evolution.
+
+        **Security Features**:
+        - Dangerous pattern detection (rm -rf /, chmod 777, etc.)
+        - Risk score calculation (0-100)
+        - Evolving permissions (ask → auto_approve after 20+ successful executions)
+        - Duplication detection
+        - Execution timeout (120s)
+        - Output limit (10KB)
+      tags:
+        - Execution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteBashRequest'
+            examples:
+              safe-command:
+                summary: Safe command (ls)
+                value:
+                  action: execute_bash
+                  params:
+                    command: "ls -la /workspace"
+                    force_execute: false
+              forced-command:
+                summary: Force execution
+                value:
+                  action: execute_bash
+                  params:
+                    command: "rm /tmp/test.txt"
+                    force_execute: true
+      responses:
+        '200':
+          description: Command executed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteBashResponse'
+        '403':
+          description: Command blocked by security policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /list_actions:
+    post:
+      summary: List available actions
+      description: Returns list of all available MCP actions
+      tags:
+        - Metadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListActionsRequest'
+      responses:
+        '200':
+          description: Actions listed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListActionsResponse'
+
+  /get_stats:
+    post:
+      summary: Get server statistics
+      description: |
+        Returns aggregated statistics:
+        - Sessions active/completed
+        - Cache hit rate
+        - Operations count
+      tags:
+        - Metadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetStatsRequest'
+      responses:
+        '200':
+          description: Statistics retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetStatsResponse'
+
+components:
+  schemas:
+    # Generation schemas
+    GenerateFileRequest:
+      type: object
+      required:
+        - action
+        - params
+      properties:
+        action:
+          type: string
+          enum: [generate_file]
+        params:
+          type: object
+          required:
+            - verified_prompt
+            - output_path
+            - code_type
+          properties:
+            verified_prompt:
+              type: string
+              description: Verified prompt for generation
+              example: "Create a HOROS worker with graceful shutdown"
+            output_path:
+              type: string
+              description: Output file path
+              example: "/workspace/worker-new/main.go"
+            code_type:
+              type: string
+              enum: [go, python, sql, code]
+              description: Type of code to generate
+            patterns:
+              type: object
+              description: Patterns to inject
+              properties:
+                naming_convention:
+                  type: string
+                  example: "camelCase"
+                top_imports:
+                  type: array
+                  items:
+                    type: string
+                  example: ["modernc.org/sqlite"]
+                error_handling:
+                  type: object
+
+    GenerateFileResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        file_path:
+          type: string
+        lines_generated:
+          type: integer
+        tokens_used:
+          type: integer
+        latency_ms:
+          type: integer
+
+    GenerateSQLRequest:
+      type: object
+      required:
+        - action
+        - params
+      properties:
+        action:
+          type: string
+          enum: [generate_sql]
+        params:
+          type: object
+          required:
+            - verified_prompt
+            - output_path
+          properties:
+            verified_prompt:
+              type: string
+            output_path:
+              type: string
+            sql_type:
+              type: string
+              enum: [schema, query, migration]
+
+    GenerateSQLResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        file_path:
+          type: string
+        sql_lines:
+          type: integer
+
+    ExploreRequest:
+      type: object
+      required:
+        - action
+        - params
+      properties:
+        action:
+          type: string
+          enum: [explore]
+        params:
+          type: object
+          required:
+            - verified_prompt
+          properties:
+            verified_prompt:
+              type: string
+              description: Open-ended prompt
+              example: "Explain the visitor pattern in Go"
+
+    ExploreResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        content:
+          type: string
+          description: Generated content
+        tokens_used:
+          type: integer
+
+    # Reading schemas
+    ReadSQLiteRequest:
+      type: object
+      required:
+        - action
+        - params
+      properties:
+        action:
+          type: string
+          enum: [read_sqlite]
+        params:
+          type: object
+          required:
+            - db_path
+          properties:
+            db_path:
+              type: string
+              description: Path to SQLite database
+              example: "/workspace/HOROS.db"
+
+    ReadSQLiteResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        digest:
+          type: object
+          properties:
+            database_summary:
+              type: string
+            pragmas:
+              type: object
+            schemas:
+              type: array
+              items:
+                type: string
+            tables:
+              type: array
+              items:
+                type: object
+            recommendations:
+              type: array
+              items:
+                type: string
+
+    ReadMarkdownRequest:
+      type: object
+      required:
+        - action
+        - params
+      properties:
+        action:
+          type: string
+          enum: [read_markdown]
+        params:
+          type: object
+          required:
+            - file_path
+          properties:
+            file_path:
+              type: string
+
+    ReadMarkdownResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        digest:
+          type: object
+          properties:
+            document_summary:
+              type: string
+            structure:
+              type: object
+            key_concepts:
+              type: array
+              items:
+                type: string
+
+    ReadCodeRequest:
+      type: object
+      required:
+        - action
+        - params
+      properties:
+        action:
+          type: string
+          enum: [read_code]
+        params:
+          type: object
+          required:
+            - file_path
+          properties:
+            file_path:
+              type: string
+
+    ReadCodeResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        digest:
+          type: object
+
+    ReadConfigRequest:
+      type: object
+      required:
+        - action
+        - params
+      properties:
+        action:
+          type: string
+          enum: [read_config]
+        params:
+          type: object
+          required:
+            - file_path
+          properties:
+            file_path:
+              type: string
+
+    ReadConfigResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        digest:
+          type: object
+
+    # Execution schemas
+    ExecuteBashRequest:
+      type: object
+      required:
+        - action
+        - params
+      properties:
+        action:
+          type: string
+          enum: [execute_bash]
+        params:
+          type: object
+          required:
+            - command
+          properties:
+            command:
+              type: string
+              description: Bash command to execute
+              example: "ls -la /workspace"
+            force_execute:
+              type: boolean
+              default: false
+              description: Bypass security policy
+
+    ExecuteBashResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        stdout:
+          type: string
+        stderr:
+          type: string
+        exit_code:
+          type: integer
+        duration_ms:
+          type: integer
+        policy:
+          type: string
+          enum: [auto_approve, ask, ask_warning]
+
+    # Metadata schemas
+    ListActionsRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [list_actions]
+
+    ListActionsResponse:
+      type: object
+      properties:
+        actions:
+          type: array
+          items:
+            type: string
+          example:
+            - generate_file
+            - read_sqlite
+            - execute_bash
+
+    GetStatsRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [get_stats]
+
+    GetStatsResponse:
+      type: object
+      properties:
+        sessions_active:
+          type: integer
+        sessions_completed:
+          type: integer
+        cache_hit_rate:
+          type: number
+          format: float
+        operations_total:
+          type: integer
+
+    # Common schemas
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: "security_violation"
+        message:
+          type: string
+          example: "Command blocked by security policy"
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    stdio:
+      type: apiKey
+      in: header
+      name: X-MCP-Protocol
+      description: JSON-RPC 2.0 over stdin/stdout
+
+security:
+  - stdio: []
