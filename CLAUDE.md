@@ -435,5 +435,6 @@ sqlite3 brainloop.output.db \
 - Documentation complète : `/workspace/projets/brainloop/BASH_EXECUTION.md`
 - Schéma sécurité : `command_security_schema.sql`
 - Règles HOROS : `/workspace/docs/architecture/horos-rules.md`
+- **Pattern ATTACH & 4-BDD** : `/workspace/docs/architecture/horos-patterns-4bdd-attach.md` ⭐
 - Pattern 4-BDD : `/workspace/docs/architecture/15-dimensions.md`
 - Worker lifecycle : `/workspace/docs/development/worker-lifecycle-pattern.md`
