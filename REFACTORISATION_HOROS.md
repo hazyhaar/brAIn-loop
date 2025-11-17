@@ -157,7 +157,7 @@ Ajoutées dans `ego_index` :
 2. **dim_composition** : Go + SQLite + Cerebras API + MCP stdio + bash sandboxing
 3. **dim_finalites** : Génération code via LLM, lecture intelligente sources, exécution bash sécurisée
 4. **dim_interactions** : MCP stdio (12 actions progressive disclosure)
-5. **dim_dependances** : Cerebras API (llama-3.3-70b), modernc.org/sqlite, command_security.db
+5. **dim_dependances** : Cerebras API (zai-glm-4.6), modernc.org/sqlite, command_security.db
 6. **dim_temporalite** : Streaming 24/7 + sessions on-demand
 7. **dim_cardinalite** : 1 instance unique par environnement
 8. **dim_observabilite** : Heartbeat 15s, métriques Cerebras, telemetry events

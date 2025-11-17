@@ -370,7 +370,7 @@ Events dans metadata.db :
 ## Dépendances
 
 **Runtime** :
-- Cerebras API (llama-3.3-70b)
+- Cerebras API (zai-glm-4.6)
 - modernc.org/sqlite v1.28.0
 - MCP protocol stdio
 

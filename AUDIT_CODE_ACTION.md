@@ -229,7 +229,7 @@ Métriques :
 
 ### Taille fichiers
 
-Cerebras llama-3.3-70b a contexte 128K tokens. Un fichier Go typique consomme :
+Cerebras zai-glm-4.6 a contexte 128K tokens. Un fichier Go typique consomme :
 - 100 lignes ≈ 400 tokens
 - 1000 lignes ≈ 4000 tokens
 - 5000 lignes ≈ 20000 tokens
