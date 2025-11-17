@@ -1,35 +1,23 @@
 # Binaries
 brainloop
-brainloop-*
 *.exe
-*.exe~
-*.dll
 *.so
+*.dll
 *.dylib
 
-# Test binary, built with `go test -c`
-*.test
-
-# Output of the go coverage tool
-coverage.out
-coverage.html
-*.coverprofile
-
-# Go workspace file
-go.work
-
-# Environment variables
-.env
-.env.local
-
-# SQLite databases (runtime)
+# Bases de données runtime
 *.db
 *.db-shm
 *.db-wal
-
-# Lock files
-brainloop.lock
 *.lock
+
+# Tests temporaires
+test_*.json
+
+# Go build artifacts
+vendor/
+bin/
+dist/
 
 # IDE
 .vscode/
@@ -37,26 +25,15 @@ brainloop.lock
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
+Thumbs.db
 
 # Logs
 *.log
+nohup.out
 
-# Temporary files
-tmp/
-temp/
-
-# Profiling
-*.prof
-*.pprof
-
-# Benchmarks
-*.bench
-
-# Development
-debug
-dist/
-vendor/
-
-# OS specific
-Thumbs.db
+# Environment
+.env
+.env.local
