@@ -5,8 +5,8 @@ brainloop
 *.dll
 *.dylib
 
-# Bases de données runtime
-*.db
+# Bases de données RUNTIME (données sensibles)
+# Les schémas vides (*.db) SONT versionnés
 *.db-shm
 *.db-wal
 *.lock
